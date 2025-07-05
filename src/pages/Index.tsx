@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, BarChart3, PieChart, Settings, TrendingUp } from 'lucide-react';
+import { PlusCircle, BarChart3, PieChart, Settings, TrendingUp, Moon, Sun } from 'lucide-react';
 
 import TransactionForm from '@/components/TransactionForm';
 import TransactionList from '@/components/TransactionList';
@@ -34,6 +33,7 @@ const Index = () => {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Load data on component mount
   useEffect(() => {
@@ -43,9 +43,29 @@ const Index = () => {
     setTransactions(loadedTransactions);
     setBudgets(loadedBudgets);
     
+    // Load theme preference
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    setIsDarkMode(prefersDark);
+    
     // Update budget spent amounts based on current transactions
     updateBudgetSpending(loadedBudgets, loadedTransactions);
   }, []);
+
+  // Apply theme changes
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
 
   const updateBudgetSpending = (currentBudgets: Budget[], currentTransactions: Transaction[]) => {
     const currentMonthTransactions = getCurrentMonthTransactions(currentTransactions);
@@ -117,16 +137,26 @@ const Index = () => {
   const categoryExpenses = getCategoryExpenses(transactions.filter(t => t.type === 'expense'));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 dark:from-gray-900 dark:to-gray-800 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
-            FinFlow
-          </h1>
-          <p className="text-muted-foreground">
-            Your Personal Finance Visualizer - Track, Analyze, and Budget
-          </p>
+        {/* Header with Theme Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="text-center space-y-2 flex-1">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+              FinFlow
+            </h1>
+            <p className="text-muted-foreground">
+              Your Personal Finance Visualizer - Track, Analyze, and Budget
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={toggleTheme}
+            className="ml-4"
+          >
+            {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
         </div>
 
         {/* Summary Cards */}
@@ -157,6 +187,7 @@ const Index = () => {
             </TabsTrigger>
           </TabsList>
 
+          {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <ExpenseChart data={monthlyExpenses} />
@@ -209,6 +240,7 @@ const Index = () => {
             </div>
           </TabsContent>
 
+          {/* Transactions Tab */}
           <TabsContent value="transactions" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">Manage Transactions</h2>
@@ -240,6 +272,7 @@ const Index = () => {
             </div>
           </TabsContent>
 
+          {/* Analytics Tab */}
           <TabsContent value="analytics" className="space-y-6">
             <h2 className="text-2xl font-bold">Financial Analytics</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -251,6 +284,7 @@ const Index = () => {
             )}
           </TabsContent>
 
+          {/* Budgets Tab */}
           <TabsContent value="budgets" className="space-y-6">
             <h2 className="text-2xl font-bold">Budget Management</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -264,6 +298,7 @@ const Index = () => {
             </div>
           </TabsContent>
 
+          {/* Insights Tab */}
           <TabsContent value="insights" className="space-y-6 hidden lg:block">
             <h2 className="text-2xl font-bold">Financial Insights</h2>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
