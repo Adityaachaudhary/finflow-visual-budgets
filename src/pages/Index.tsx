@@ -22,7 +22,8 @@ import {
   saveBudgets,
   getMonthlyExpenses,
   getCategoryExpenses,
-  getCurrentMonthTransactions
+  getCurrentMonthTransactions,
+  formatCurrency
 } from '@/lib/finance-utils';
 
 import { toast } from '@/hooks/use-toast';
