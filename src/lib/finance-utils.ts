@@ -17,13 +17,16 @@ export interface Budget {
 export const CATEGORIES = [
   'Food & Dining',
   'Transportation',
-  'Shopping',
+  'Shopping', 
   'Entertainment',
   'Bills & Utilities',
   'Healthcare',
   'Travel',
   'Education',
   'Personal Care',
+  'Groceries',
+  'Rent/Mortgage',
+  'Insurance',
   'Other'
 ];
 
@@ -37,25 +40,46 @@ export const CATEGORY_COLORS = {
   'Travel': '#98D8C8',
   'Education': '#F7DC6F',
   'Personal Care': '#BB8FCE',
+  'Groceries': '#FF8A65',
+  'Rent/Mortgage': '#81C784',
+  'Insurance': '#64B5F6',
   'Other': '#85C1E9'
 };
 
 export const loadTransactions = (): Transaction[] => {
-  const stored = localStorage.getItem('finflow_transactions');
-  return stored ? JSON.parse(stored) : [];
+  try {
+    const stored = localStorage.getItem('finflow_transactions');
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Error loading transactions:', error);
+    return [];
+  }
 };
 
 export const saveTransactions = (transactions: Transaction[]) => {
-  localStorage.setItem('finflow_transactions', JSON.stringify(transactions));
+  try {
+    localStorage.setItem('finflow_transactions', JSON.stringify(transactions));
+  } catch (error) {
+    console.error('Error saving transactions:', error);
+  }
 };
 
 export const loadBudgets = (): Budget[] => {
-  const stored = localStorage.getItem('finflow_budgets');
-  return stored ? JSON.parse(stored) : [];
+  try {
+    const stored = localStorage.getItem('finflow_budgets');
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Error loading budgets:', error);
+    return [];
+  }
 };
 
 export const saveBudgets = (budgets: Budget[]) => {
-  localStorage.setItem('finflow_budgets', JSON.stringify(budgets));
+  try {
+    localStorage.setItem('finflow_budgets', JSON.stringify(budgets));
+  } catch (error) {
+    console.error('Error saving budgets:', error);
+  }
 };
 
 export const generateId = () => {
@@ -85,7 +109,11 @@ export const getMonthlyExpenses = (transactions: Transaction[]) => {
       month: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
       amount
     }))
-    .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime())
+    .sort((a, b) => {
+      const dateA = new Date(a.month + ' 01');
+      const dateB = new Date(b.month + ' 01');
+      return dateA.getTime() - dateB.getTime();
+    })
     .slice(-6); // Last 6 months
 };
 
@@ -98,11 +126,13 @@ export const getCategoryExpenses = (transactions: Transaction[]) => {
       categoryData[transaction.category] = (categoryData[transaction.category] || 0) + transaction.amount;
     });
 
-  return Object.entries(categoryData).map(([category, amount]) => ({
-    category,
-    amount,
-    color: CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS] || '#95A5A6'
-  }));
+  return Object.entries(categoryData)
+    .map(([category, amount]) => ({
+      category,
+      amount,
+      color: CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS] || '#95A5A6'
+    }))
+    .sort((a, b) => b.amount - a.amount); // Sort by amount descending
 };
 
 export const getCurrentMonthTransactions = (transactions: Transaction[]) => {
@@ -117,9 +147,13 @@ export const getCurrentMonthTransactions = (transactions: Transaction[]) => {
 };
 
 export const getTotalIncome = (transactions: Transaction[]) => {
-  return transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+  return transactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
 };
 
 export const getTotalExpenses = (transactions: Transaction[]) => {
-  return transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+  return transactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + t.amount, 0);
 };

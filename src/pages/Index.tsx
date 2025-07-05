@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, BarChart3, PieChart, Settings } from 'lucide-react';
+import { PlusCircle, BarChart3, PieChart, Settings, TrendingUp } from 'lucide-react';
 
 import TransactionForm from '@/components/TransactionForm';
 import TransactionList from '@/components/TransactionList';
@@ -32,6 +32,7 @@ const Index = () => {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   // Load data on component mount
   useEffect(() => {
@@ -84,6 +85,7 @@ const Index = () => {
   const handleEditTransaction = (transaction: Transaction) => {
     setEditingTransaction(transaction);
     setShowAddForm(true);
+    setActiveTab('transactions');
   };
 
   const handleDeleteTransaction = (id: string) => {
@@ -111,7 +113,7 @@ const Index = () => {
 
   // Prepare chart data
   const monthlyExpenses = getMonthlyExpenses(transactions);
-  const categoryExpenses = getCategoryExpenses(transactions);
+  const categoryExpenses = getCategoryExpenses(transactions.filter(t => t.type === 'expense'));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4">
@@ -122,7 +124,7 @@ const Index = () => {
             FinFlow
           </h1>
           <p className="text-muted-foreground">
-            Your Personal Finance Visualizer
+            Your Personal Finance Visualizer - Track, Analyze, and Budget
           </p>
         </div>
 
@@ -130,7 +132,7 @@ const Index = () => {
         <SummaryCards transactions={transactions} budgets={budgets} />
 
         {/* Main Content */}
-        <Tabs defaultValue="dashboard" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4 lg:grid-cols-5">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -149,7 +151,7 @@ const Index = () => {
               <span className="hidden sm:inline">Budgets</span>
             </TabsTrigger>
             <TabsTrigger value="insights" className="hidden lg:flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
+              <TrendingUp className="h-4 w-4" />
               Insights
             </TabsTrigger>
           </TabsList>
@@ -175,7 +177,10 @@ const Index = () => {
                 <CardContent className="space-y-3">
                   <Button 
                     className="w-full" 
-                    onClick={() => setShowAddForm(true)}
+                    onClick={() => {
+                      setShowAddForm(true);
+                      setActiveTab('transactions');
+                    }}
                   >
                     <PlusCircle className="h-4 w-4 mr-2" />
                     Add Transaction
@@ -205,7 +210,7 @@ const Index = () => {
 
           <TabsContent value="transactions" className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Transactions</h2>
+              <h2 className="text-2xl font-bold">Manage Transactions</h2>
               {!showAddForm && (
                 <Button onClick={() => setShowAddForm(true)}>
                   <PlusCircle className="h-4 w-4 mr-2" />
@@ -235,7 +240,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
-            <h2 className="text-2xl font-bold">Analytics</h2>
+            <h2 className="text-2xl font-bold">Financial Analytics</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <ExpenseChart data={monthlyExpenses} />
               <CategoryChart data={categoryExpenses} />
@@ -263,7 +268,7 @@ const Index = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Spending Trends</CardTitle>
+                  <CardTitle>Top Spending Categories</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -274,10 +279,10 @@ const Index = () => {
                             className="w-3 h-3 rounded-full" 
                             style={{ backgroundColor: category.color }}
                           />
-                          <span className="text-sm">{category.category}</span>
+                          <span className="text-sm font-medium">{category.category}</span>
                         </div>
-                        <span className="text-sm font-medium">
-                          ${category.amount.toFixed(0)}
+                        <span className="text-sm font-bold text-red-600">
+                          {formatCurrency(category.amount)}
                         </span>
                       </div>
                     ))}
@@ -296,18 +301,18 @@ const Index = () => {
                       const status = percentage > 100 ? 'Over' : 
                                    percentage > 80 ? 'High' : 'Good';
                       return (
-                        <div key={budget.category} className="space-y-1">
+                        <div key={budget.category} className="space-y-2">
                           <div className="flex justify-between text-sm">
-                            <span>{budget.category}</span>
+                            <span className="font-medium">{budget.category}</span>
                             <span className={
-                              status === 'Over' ? 'text-red-600' :
-                              status === 'High' ? 'text-yellow-600' : 'text-green-600'
+                              status === 'Over' ? 'text-red-600 font-bold' :
+                              status === 'High' ? 'text-yellow-600 font-medium' : 'text-green-600 font-medium'
                             }>
                               {status}
                             </span>
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {percentage.toFixed(1)}% used
+                            {percentage.toFixed(1)}% used ({formatCurrency(budget.spent)} / {formatCurrency(budget.amount)})
                           </div>
                         </div>
                       );
@@ -324,14 +329,14 @@ const Index = () => {
                   <div className="space-y-3">
                     {transactions.slice(0, 5).map((transaction) => (
                       <div key={transaction.id} className="flex items-center justify-between text-sm">
-                        <div>
-                          <div className="font-medium">{transaction.description}</div>
-                          <div className="text-muted-foreground">{transaction.category}</div>
+                        <div className="flex-1">
+                          <div className="font-medium truncate">{transaction.description}</div>
+                          <div className="text-muted-foreground text-xs">{transaction.category}</div>
                         </div>
-                        <div className={
+                        <div className={`font-bold ${
                           transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                        }>
-                          {transaction.type === 'income' ? '+' : '-'}${transaction.amount}
+                        }`}>
+                          {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                         </div>
                       </div>
                     ))}

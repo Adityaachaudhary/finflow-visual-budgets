@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,14 +21,26 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   onCancel 
 }) => {
   const [formData, setFormData] = useState({
-    amount: editingTransaction?.amount.toString() || '',
-    description: editingTransaction?.description || '',
-    date: editingTransaction?.date || new Date().toISOString().split('T')[0],
-    category: editingTransaction?.category || '',
-    type: editingTransaction?.type || 'expense'
+    amount: '',
+    description: '',
+    date: new Date().toISOString().split('T')[0],
+    category: '',
+    type: 'expense' as 'income' | 'expense'
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  useEffect(() => {
+    if (editingTransaction) {
+      setFormData({
+        amount: editingTransaction.amount.toString(),
+        description: editingTransaction.description,
+        date: editingTransaction.date,
+        category: editingTransaction.category,
+        type: editingTransaction.type
+      });
+    }
+  }, [editingTransaction]);
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -71,7 +83,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       description: formData.description.trim(),
       date: formData.date,
       category: formData.category,
-      type: formData.type as 'income' | 'expense'
+      type: formData.type
     };
 
     onSubmit(transaction);
@@ -84,6 +96,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         category: '',
         type: 'expense'
       });
+      setErrors({});
     }
 
     toast({
@@ -100,7 +113,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full">
       <CardHeader>
         <CardTitle className="text-center">
           {editingTransaction ? 'Edit Transaction' : 'Add New Transaction'}
@@ -117,11 +130,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="expense" id="expense" />
-                <Label htmlFor="expense" className="text-red-600">Expense</Label>
+                <Label htmlFor="expense" className="text-red-600 cursor-pointer">Expense</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="income" id="income" />
-                <Label htmlFor="income" className="text-green-600">Income</Label>
+                <Label htmlFor="income" className="text-green-600 cursor-pointer">Income</Label>
               </div>
             </RadioGroup>
           </div>
@@ -158,7 +171,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
               <SelectTrigger className={errors.category ? 'border-red-500' : ''}>
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white border shadow-lg z-50">
                 {CATEGORIES.map(category => (
                   <SelectItem key={category} value={category}>
                     {category}
@@ -183,7 +196,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
           <div className="flex space-x-2 pt-4">
             <Button type="submit" className="flex-1">
-              {editingTransaction ? 'Update' : 'Add Transaction'}
+              {editingTransaction ? 'Update Transaction' : 'Add Transaction'}
             </Button>
             {editingTransaction && onCancel && (
               <Button type="button" variant="outline" onClick={onCancel} className="flex-1">

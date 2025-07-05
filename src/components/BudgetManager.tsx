@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -18,12 +17,28 @@ interface BudgetManagerProps {
 
 const BudgetManager: React.FC<BudgetManagerProps> = ({ budgets, onUpdateBudgets }) => {
   const [newBudget, setNewBudget] = useState({ category: '', amount: '' });
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  const validateBudget = () => {
+    const newErrors: { [key: string]: string } = {};
+
+    if (!newBudget.category) {
+      newErrors.category = 'Please select a category';
+    }
+
+    if (!newBudget.amount || parseFloat(newBudget.amount) <= 0) {
+      newErrors.amount = 'Amount must be greater than 0';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const addBudget = () => {
-    if (!newBudget.category || !newBudget.amount || parseFloat(newBudget.amount) <= 0) {
+    if (!validateBudget()) {
       toast({
         title: "Invalid Budget",
-        description: "Please select a category and enter a valid amount",
+        description: "Please fix the errors in the form",
         variant: "destructive"
       });
       return;
@@ -38,20 +53,25 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ budgets, onUpdateBudgets 
         amount: parseFloat(newBudget.amount)
       };
       onUpdateBudgets(updatedBudgets);
+      toast({
+        title: "Budget Updated",
+        description: `Budget for ${newBudget.category} updated to ${formatCurrency(parseFloat(newBudget.amount))}`,
+      });
     } else {
       const budget: Budget = {
         category: newBudget.category,
         amount: parseFloat(newBudget.amount),
-        spent: budgets.find(b => b.category === newBudget.category)?.spent || 0
+        spent: 0
       };
       onUpdateBudgets([...budgets, budget]);
+      toast({
+        title: "Budget Added",
+        description: `Budget for ${newBudget.category} set to ${formatCurrency(parseFloat(newBudget.amount))}`,
+      });
     }
 
     setNewBudget({ category: '', amount: '' });
-    toast({
-      title: "Budget Updated",
-      description: `Budget for ${newBudget.category} has been set to ${formatCurrency(parseFloat(newBudget.amount))}`,
-    });
+    setErrors({});
   };
 
   const deleteBudget = (category: string) => {
@@ -68,27 +88,31 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ budgets, onUpdateBudgets 
 
   const getBudgetStatus = (budget: Budget) => {
     const percentage = (budget.spent / budget.amount) * 100;
-    if (percentage > 100) return { status: 'over', color: 'text-red-600' };
-    if (percentage > 80) return { status: 'warning', color: 'text-yellow-600' };
-    return { status: 'good', color: 'text-green-600' };
+    if (percentage > 100) return { status: 'Over Budget', color: 'bg-red-100 text-red-800', textColor: 'text-red-600' };
+    if (percentage > 80) return { status: 'Near Limit', color: 'bg-yellow-100 text-yellow-800', textColor: 'text-yellow-600' };
+    return { status: 'On Track', color: 'bg-green-100 text-green-800', textColor: 'text-green-600' };
   };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Set Budget</CardTitle>
+          <CardTitle>Set Monthly Budget</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Select value={newBudget.category} onValueChange={(value) => 
-                setNewBudget(prev => ({ ...prev, category: value }))
-              }>
-                <SelectTrigger>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Select 
+                value={newBudget.category} 
+                onValueChange={(value) => {
+                  setNewBudget(prev => ({ ...prev, category: value }));
+                  if (errors.category) setErrors(prev => ({ ...prev, category: '' }));
+                }}
+              >
+                <SelectTrigger className={errors.category ? 'border-red-500' : ''}>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white border shadow-lg z-50">
                   {availableCategories.map(category => (
                     <SelectItem key={category} value={category}>
                       {category}
@@ -96,22 +120,32 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ budgets, onUpdateBudgets 
                   ))}
                 </SelectContent>
               </Select>
+              {errors.category && <p className="text-red-500 text-sm">{errors.category}</p>}
             </div>
-            <div className="flex-1">
+            
+            <div className="space-y-2">
               <Input
                 type="number"
                 step="0.01"
                 placeholder="Budget amount"
                 value={newBudget.amount}
-                onChange={(e) => setNewBudget(prev => ({ ...prev, amount: e.target.value }))}
+                onChange={(e) => {
+                  setNewBudget(prev => ({ ...prev, amount: e.target.value }));
+                  if (errors.amount) setErrors(prev => ({ ...prev, amount: '' }));
+                }}
+                className={errors.amount ? 'border-red-500' : ''}
               />
+              {errors.amount && <p className="text-red-500 text-sm">{errors.amount}</p>}
             </div>
-            <Button onClick={addBudget} disabled={availableCategories.length === 0}>
-              <Plus className="h-4 w-4" />
+            
+            <Button onClick={addBudget} disabled={availableCategories.length === 0} className="h-10">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Budget
             </Button>
           </div>
+          
           {availableCategories.length === 0 && (
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-sm text-muted-foreground">
               All categories have budgets set. Delete a budget to add a new one.
             </p>
           )}
@@ -124,26 +158,22 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ budgets, onUpdateBudgets 
             <CardTitle>Budget Overview</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6">
               {budgets.map((budget) => {
                 const status = getBudgetStatus(budget);
                 const percentage = Math.min((budget.spent / budget.amount) * 100, 100);
                 
                 return (
-                  <div key={budget.category} className="space-y-2">
+                  <div key={budget.category} className="space-y-3 p-4 border rounded-lg">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{budget.category}</span>
-                        <Badge 
-                          variant="outline"
-                          className={status.color}
-                        >
-                          {status.status === 'over' ? 'Over Budget' : 
-                           status.status === 'warning' ? 'Near Limit' : 'On Track'}
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium text-lg">{budget.category}</span>
+                        <Badge className={status.color}>
+                          {status.status}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium">
                           {formatCurrency(budget.spent)} / {formatCurrency(budget.amount)}
                         </span>
                         <Button
@@ -156,13 +186,15 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ budgets, onUpdateBudgets 
                         </Button>
                       </div>
                     </div>
+                    
                     <Progress 
                       value={percentage} 
-                      className="h-2"
+                      className="h-3"
                     />
-                    <div className="flex justify-between text-xs text-muted-foreground">
+                    
+                    <div className="flex justify-between text-sm text-muted-foreground">
                       <span>{percentage.toFixed(1)}% used</span>
-                      <span>
+                      <span className={status.textColor}>
                         {budget.amount - budget.spent > 0 
                           ? `${formatCurrency(budget.amount - budget.spent)} remaining`
                           : `${formatCurrency(budget.spent - budget.amount)} over budget`
